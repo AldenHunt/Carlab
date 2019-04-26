@@ -60,6 +60,8 @@ void loop() {
   
   // Get the error for PID (based on x-location of ball in frame)
   forwardCam.ccc.getBlocks();
+  // do we wannt to use forwardCam.ccc.getBlocks(true, 1) <-- this lets us
+    //only look at the first signature and wait until it finds one witbout returning false
   for (int i = 0; i < (sizeof(forwardCam.ccc.blocks) / sizeof(forwardCam.ccc.blocks[0])); i++) {
     if (forwardCam.ccc.blocks[i].m_width < 5) continue; // Avoid false positives
     objX = forwardCam.ccc.blocks[i].m_x;
@@ -85,5 +87,8 @@ void loop() {
   delay(500);
   lowerArm();
   delay(500);
+
+  // program to lift the arm using photoDiode
+  // detect 
 
 }
