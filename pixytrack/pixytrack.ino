@@ -66,21 +66,18 @@ void lowerArm() {
 }
 
 void loop() {
-<<<<<<< HEAD
   // put your main code here, to run repeatedly:
-  
+  Blocks ball[]; // ball block
+  Blocks bases[]; // bases block
+
   // Get the error for PID (based on x-location of ball in frame)
-  forwardCam.ccc.getBlocks();
-  // do we wannt to use forwardCam.ccc.getBlocks(true, 1) <-- this lets us
-    //only look at the first signature and wait until it finds one witbout returning false
+  ball = forwardCam.ccc.getBlocks(true, 1); // wait until it detects object with signature 1 (ball) 
   for (int i = 0; i < (sizeof(forwardCam.ccc.blocks) / sizeof(forwardCam.ccc.blocks[0])); i++) {
     if (forwardCam.ccc.blocks[i].m_width < 5) continue; // Avoid false positives
     objX = forwardCam.ccc.blocks[i].m_x;
     err = objX - 168;
     break;
   }
-=======
->>>>>>> c717cb57ebf79dff253b79a87f1010807aa02aab
 
   switch(state) {
     case TRACK: {
@@ -90,7 +87,7 @@ void loop() {
         break;
       }
       // Get the error for PID (based on x-location of ball in frame)
-      forwardCam.ccc.getBlocks();
+      ball = forwardCam.ccc.getBlocks(true, 1);
 
       /* ! THIS SHOULD PROBABLY BE A WHILE LOOP ! */
       for (int i = 0; i < (sizeof(forwardCam.ccc.blocks) / sizeof(forwardCam.ccc.blocks[0])); i++) {
@@ -113,6 +110,20 @@ void loop() {
       liftArm();
       state = RUN;
       break;
+    }
+    case RUN: {
+      bases = forwardCam.ccc.getBlocks(true, 14); // we want signatures 1110, just the bases
+      
+
+
+    }
+    case TAG: {
+      lowerArm();
+      
+      break;
+    }
+
+    }
     }
   }
   
