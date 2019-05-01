@@ -16,6 +16,13 @@ int errorDerivative[5];
 double steerP, steerI, steerD;
 double steerKP, steerKI, steerKD; 
 
+enum state {
+  TRACK,
+  FIELD,
+  RUN,
+  TAG
+};
+
 
 void setup() {
   // put your setup code here, to run once:
@@ -27,8 +34,11 @@ void setup() {
   steerKP = 2; steerKI = 0.2; steerKD = 1;
 }
 
-void steer(double P, double I, double D) {
-  
+void doSteer(double P, double I, double D) {
+  double toServo = 90 + P + I + D;
+  if (toServo < 0) toServo = 0;
+  else if (toServo > 180) toServo = 180;
+  steer.write(toServo);
 }
 
 void getDeriv() {
@@ -56,6 +66,7 @@ void lowerArm() {
 }
 
 void loop() {
+<<<<<<< HEAD
   // put your main code here, to run repeatedly:
   
   // Get the error for PID (based on x-location of ball in frame)
@@ -68,25 +79,48 @@ void loop() {
     err = objX - 168;
     break;
   }
+=======
+>>>>>>> c717cb57ebf79dff253b79a87f1010807aa02aab
 
-  // Calculations for PID components
-  // Derivative
-  getDeriv();
-  loops++;
+  switch(state) {
+    case TRACK: {
 
-  // Integral
-  steerI += steerKI * err; 
+      if (photoDiode) {
+        state = FIELD;
+        break;
+      }
+      // Get the error for PID (based on x-location of ball in frame)
+      forwardCam.ccc.getBlocks();
 
-  // Proportional
-  steerP = steerP * err;
+      /* ! THIS SHOULD PROBABLY BE A WHILE LOOP ! */
+      for (int i = 0; i < (sizeof(forwardCam.ccc.blocks) / sizeof(forwardCam.ccc.blocks[0])); i++) {
+        if (forwardCam.ccc.blocks[i].m_width < 5) continue; // Avoid false positives
+        objX = forwardCam.ccc.blocks[i].m_x;
+        err = objX - 168;
+        break;
+      }
+    
+      // Calculations for PID components
+      getDeriv(); // derivative (sets global variable)
+      loops++; 
+      steerI += steerKI * err; // integral
+      steerP = steerKP * err; // proportional
 
-  // Do actual steer
-  steer.write(90 + P + I + D);
+      doSteer(SteerP, SteerI, SteerD); // Do actual steer
+      break;
+    }
+    case FIELD: {
+      liftArm();
+      state = RUN;
+      break;
+    }
+  }
+  
+  
+  
+  
 
-  liftArm();
-  delay(500);
-  lowerArm();
-  delay(500);
+
 
   // program to lift the arm using photoDiode
   // detect 
