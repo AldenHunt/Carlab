@@ -13,6 +13,7 @@ enum state {
 };
 
 int photoDiode = 12;
+int motor = 3;
 int objX = 168;
 int err = 0;
 int armPos = 135;
@@ -29,14 +30,18 @@ void setup() {
   // put your setup code here, to run once:
   // Attaching motors/servos/sensors to correct pin
   pinMode(photoDiode, INPUT);
+  pinMode(motor, OUTPUT);
   mitt.attach(9);
   steer.attach(10);
   Serial.begin(9600);
   forwardCam.init();
-
+  
+  mitt.write(140);
+  steer.write(90);
   loops = 0;
   currState = TRACK;
-  steerKP = 0.5; steerKI = 0.0; steerKD = 0.0;
+  steerKP = 0.7; steerKI = 0; steerKD = 0.05;
+  analogWrite(motor, 75);
 }
 
 void doSteer(double P, double I, double D) {
@@ -75,11 +80,10 @@ void lowerArm() {
 }
 
 void loop() {
-<<<<<<< HEAD
   // put your main code here, to run repeatedly:
-  Blocks ball[]; // ball block
-  Blocks bases[]; // bases block
-
+  //Blocks ball[]; // ball block
+  //Blocks bases[]; // bases block
+  /*
   // Get the error for PID (based on x-location of ball in frame)
   ball = forwardCam.ccc.getBlocks(true, 1); // wait until it detects object with signature 1 (ball) 
   for (int i = 0; i < (sizeof(forwardCam.ccc.blocks) / sizeof(forwardCam.ccc.blocks[0])); i++) {
@@ -87,30 +91,25 @@ void loop() {
     objX = forwardCam.ccc.blocks[i].m_x;
     err = objX - 168;
     break;
-  }
+  } */
 
-  switch(state) {
-=======
   switch(currState) {
->>>>>>> 1b83811fa50c0153e2a6ea7d08012ee3149bf074
     case TRACK: {
 
-      /*if (photoDiode) {
+      if (loops >= 150) {
         currState = FIELD;
         break;
-      } */
+      }
       // Get the error for PID (based on x-location of ball in frame)
-<<<<<<< HEAD
-      ball = forwardCam.ccc.getBlocks(true, 1);
-=======
       forwardCam.ccc.getBlocks();
       Serial.print("Blocks: ");
       Serial.println(forwardCam.ccc.numBlocks);
       //forwardCam.ccc.blocks[0].print();
-      objX = forwardCam.ccc.blocks[0].m_x;
+      if (forwardCam.numBlocks > 0) {
+        objX = forwardCam.ccc.blocks[0].m_x;
       
-      err = objX - 168;
->>>>>>> 1b83811fa50c0153e2a6ea7d08012ee3149bf074
+        err = objX - 168;
+      }
 
       /* ! THIS SHOULD PROBABLY BE A WHILE LOOP ! */
       /*for (int i = 0; i < (sizeof(forwardCam.ccc.blocks) / sizeof(forwardCam.ccc.blocks[0])); i++) {
@@ -129,33 +128,28 @@ void loop() {
       break;
     }
     case FIELD: {
+      analogWrite(motor, 0);
       liftArm();
       currState = RUN;
       break;
     }
-    case RUN: {
+    /*case RUN: {
       bases = forwardCam.ccc.getBlocks(true, 14); // we want signatures 1110, just the bases
       
 
 
-    }
+    } */
     case TAG: {
       lowerArm();
       
       break;
     }
 
-    }
-    }
   }
-  
-  
-  
-  delay(1000);
 
 
 
   // program to lift the arm using photoDiode
   // detect 
-
+  delay(5);
 }
