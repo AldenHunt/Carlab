@@ -5,17 +5,6 @@ Pixy2 forwardCam;
 Servo mitt;
 Servo steer;
 
-int photoDiode = 12;
-int objX = 168;
-int err = 0;
-int servoPos = 90;
-int loops = 0;
-int errorDerivative[5];
-
-// PID variables for steering //
-double steerP, steerI, steerD;
-double steerKP, steerKI, steerKD; 
-
 enum state {
   TRACK,
   FIELD,
@@ -23,6 +12,18 @@ enum state {
   TAG
 };
 
+int photoDiode = 12;
+int objX = 168;
+int err = 0;
+int armPos = 135;
+int loops;
+int errorDerivative[5];
+
+// PID variables for steering //
+double steerP, steerI, steerD;
+double steerKP, steerKI, steerKD; 
+
+state currState;
 
 void setup() {
   // put your setup code here, to run once:
@@ -30,14 +31,20 @@ void setup() {
   pinMode(photoDiode, INPUT);
   mitt.attach(9);
   steer.attach(10);
+  Serial.begin(9600);
+  forwardCam.init();
 
-  steerKP = 2; steerKI = 0.2; steerKD = 1;
+  loops = 0;
+  currState = TRACK;
+  steerKP = 0.5; steerKI = 0.0; steerKD = 0.0;
 }
 
 void doSteer(double P, double I, double D) {
-  double toServo = 90 + P + I + D;
+  int toServo = (int) 90 + P + I + D;
   if (toServo < 0) toServo = 0;
   else if (toServo > 180) toServo = 180;
+  Serial.print("Steer: ");
+  Serial.println(toServo);
   steer.write(toServo);
 }
 
@@ -56,16 +63,19 @@ void getDeriv() {
 }
 
 void liftArm() {
-  mitt.write(135);
+  mitt.write(180);
   Serial.print("Lifted");
+  return;
 }
 
 void lowerArm() {
-  mitt.write(90);
+  mitt.write(135);
   Serial.print("Lowered");
+  return;
 }
 
 void loop() {
+<<<<<<< HEAD
   // put your main code here, to run repeatedly:
   Blocks ball[]; // ball block
   Blocks bases[]; // bases block
@@ -80,22 +90,34 @@ void loop() {
   }
 
   switch(state) {
+=======
+  switch(currState) {
+>>>>>>> 1b83811fa50c0153e2a6ea7d08012ee3149bf074
     case TRACK: {
 
-      if (photoDiode) {
-        state = FIELD;
+      /*if (photoDiode) {
+        currState = FIELD;
         break;
-      }
+      } */
       // Get the error for PID (based on x-location of ball in frame)
+<<<<<<< HEAD
       ball = forwardCam.ccc.getBlocks(true, 1);
+=======
+      forwardCam.ccc.getBlocks();
+      Serial.print("Blocks: ");
+      Serial.println(forwardCam.ccc.numBlocks);
+      //forwardCam.ccc.blocks[0].print();
+      objX = forwardCam.ccc.blocks[0].m_x;
+      
+      err = objX - 168;
+>>>>>>> 1b83811fa50c0153e2a6ea7d08012ee3149bf074
 
       /* ! THIS SHOULD PROBABLY BE A WHILE LOOP ! */
-      for (int i = 0; i < (sizeof(forwardCam.ccc.blocks) / sizeof(forwardCam.ccc.blocks[0])); i++) {
+      /*for (int i = 0; i < (sizeof(forwardCam.ccc.blocks) / sizeof(forwardCam.ccc.blocks[0])); i++) {
         if (forwardCam.ccc.blocks[i].m_width < 5) continue; // Avoid false positives
         objX = forwardCam.ccc.blocks[i].m_x;
         err = objX - 168;
-        break;
-      }
+      } */
     
       // Calculations for PID components
       getDeriv(); // derivative (sets global variable)
@@ -103,12 +125,12 @@ void loop() {
       steerI += steerKI * err; // integral
       steerP = steerKP * err; // proportional
 
-      doSteer(SteerP, SteerI, SteerD); // Do actual steer
+      doSteer(steerP, steerI, steerD); // Do actual steer
       break;
     }
     case FIELD: {
       liftArm();
-      state = RUN;
+      currState = RUN;
       break;
     }
     case RUN: {
@@ -129,7 +151,7 @@ void loop() {
   
   
   
-  
+  delay(1000);
 
 
 
