@@ -53,6 +53,10 @@ void doSteer(double P, double I, double D) {
   steer.write(toServo);
 }
 
+void turnAround(){
+  steer.write(45);
+}
+
 void getDeriv() {
   int i = loops % 5;
   errorDerivative[i] = err;
@@ -108,7 +112,7 @@ void loop() {
       if (forwardCam.numBlocks > 0) {
         objX = forwardCam.ccc.blocks[0].m_x;
       
-        err = objX - 168;
+        err = objX - 158; /* shouldn't this be 158*/
       }
 
       /* ! THIS SHOULD PROBABLY BE A WHILE LOOP ! */
@@ -133,22 +137,45 @@ void loop() {
       currState = RUN;
       break;
     }
-    /*case RUN: {
-      bases = forwardCam.ccc.getBlocks(true, 14); // we want signatures 1110, just the bases
-      
+    case RUN: {
 
+      forwardCam.ccc.getBlocks(14); // we want signatures 1110, just the bases
+      /* the array will be automatically ordered with the largest object first*/
+      if (forwardCam.ccc.numBlocks == 0) {
+        turnAround();
+        break;
+      /* make the car rotate?*/
+      }
 
-    } */
+      if (forwardCam.ccc.numBlocks > 0) {
+        forwardCam.ccc.blocks[0];
+        objX = forwardCam.ccc.blocks[0].m_x;
+
+        err = objX - 158;
+
+        if (forwardCam.ccc.blocks[0].width > 250){
+          currState = TAG;
+          break;
+        }
+
+      getDeriv(); // derivative (sets global variable)
+      steerI += steerKI * err; // integral
+      steerP = steerKP * err; // proportional
+
+      doSteer(steerP, steerI, steerD); // Do actual steer
+      break;
+
+    } 
     case TAG: {
       lowerArm();
-      
+      turnAround();
+      currState = TRACK;
+      /* make it go back to home base? */
+      /*forwardCam.ccc.getBlocks(32);*/
       break;
     }
 
   }
-
-
-
   // program to lift the arm using photoDiode
   // detect 
   delay(5);
