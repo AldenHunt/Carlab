@@ -1,9 +1,11 @@
 #include <Pixy2.h>
 #include <Servo.h>
+#include "Adafruit_APDS9960.h"
 
 Pixy2 forwardCam;
 Servo mitt;
 Servo steer;
+Adafruit_APDS9960 apds;
 
 enum state {
   TRACK,
