@@ -25,7 +25,7 @@ int loops;
 int errorDerivative[5];
 bool sawBall;
 int closestBase;
-int loop = 0;
+int seen = 0;
 
 // PID variables for steering //
 double steerP, steerI, steerD;
@@ -53,7 +53,7 @@ void setup() {
   mitt.write(140);
   steer.write(90);
   loops = 0;
-  currState = TRACK;
+  currState = RUN; // Just testing bases right now
   steerKP = 0.7; steerKI = 0; steerKD = 0.05;
   analogWrite(motor, 80);
   
@@ -183,21 +183,22 @@ void loop() {
       }
       else {
         Serial.println("Saw base");
+        analogWrite(motor, 60);
       }
 
-      if (loop == 0) {
+      if (seen == 0) {
         closestBase = forwardCam.ccc.blocks[0].m_index;
-        loop = 1;
+        seen = 1;
       }
       
       for(int i = 0; i < forwardCam.ccc.numBlocks; i++){
-          if (forwardCam.ccc.blocks[i].m_index == index){
-            analogWrite(motor, 60);
+          if (forwardCam.ccc.blocks[i].m_index == closestBase){
+            
             objX = forwardCam.ccc.blocks[i].m_x;
 
             err = objX - 158;
             
-            if (forwardCam.ccc.blocks[i].m_width > 125){
+            if (forwardCam.ccc.blocks[i].m_width > 100){
               Serial.println("Base large in frame, moving to tag.");
               currState = TAG;
               break;
@@ -207,9 +208,13 @@ void loop() {
             steerP = steerKP * err; // proportional
 
             doSteer(steerP, steerI, steerD); // Do actual steer
-            break;
-            }   
+            }
+          else if (i = (forwardCam.ccc.numBlocks - 1)) {
+            closestBase = forwardCam.ccc.blocks[0].m_index;   
+          }
         }
+        loops++;
+        break;
     }
 
     case TAG: {
