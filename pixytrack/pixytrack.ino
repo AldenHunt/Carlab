@@ -18,14 +18,13 @@ enum state {
 int photoDiode = 12;
 int motor = 3;
 //int proximity = 7;
-int objX = 168;
+int objX = 158;
 int err = 0;
-int armPos = 135;
 int loops;
 int errorDerivative[5];
 bool sawBall;
 int closestBase;
-int seen = 0;
+int seen;
 
 // PID variables for steering //
 double steerP, steerI, steerD;
@@ -50,11 +49,12 @@ void setup() {
   */
   forwardCam.init();
   sawBall = false;
-  mitt.write(140);
+  mitt.write(5);
   steer.write(90);
   loops = 0;
-  currState = RUN; // Just testing bases right now
-  steerKP = 0.7; steerKI = 0; steerKD = 0.05;
+  seen = 0;
+  currState = TRACK;
+  steerKP = 0.7; steerKI = 0; steerKD = 0;
   analogWrite(motor, 80);
   
   /*apds.enableProximity(true);
@@ -72,8 +72,8 @@ void doSteer(double P, double I, double D) {
 }
 
 void turnAround(){
-  steer.write(0);
-  analogWrite(motor, 55);
+  steer.write(5);
+  analogWrite(motor, 30);
 }
 
 void getDeriv() {
@@ -91,14 +91,14 @@ void getDeriv() {
 }
 
 void liftArm() {
-  mitt.write(180);
-  Serial.print("Lifted");
+  mitt.write(45);
+  Serial.println("Lifted");
   return;
 }
 
 void lowerArm() {
-  mitt.write(135);
-  Serial.print("Lowered");
+  mitt.write(5);
+  Serial.println("Lowered");
   return;
 }
 
@@ -120,7 +120,7 @@ void loop() {
         break;
       } */
       
-      if (loops >= 200) {
+      if (loops >= 500) {
         Serial.println("End of loops, going to field.");
         currState = FIELD;
         break;
@@ -136,7 +136,7 @@ void loop() {
         err = objX - 158;
       }
       else if (sawBall) {
-          delay(20);
+          delay(200);
           currState = FIELD;
           Serial.println("Ball moved out of frame, going to field.");
           break;
@@ -166,24 +166,25 @@ void loop() {
       currState = RUN;
       steerP, steerI, steerD = 0;
       loops = 0;
-      delay(250);
+      delay(2000);
       Serial.println("Finished fielding, going to 'run'");
       break;
     }
     case RUN: {
-
+        Serial.print("Err: ");
+        Serial.println(err);
 
       forwardCam.ccc.getBlocks(30); // we want signatures 11110, just the bases
       // the array will be automatically ordered with the largest object first
 
-      if (forwardCam.ccc.numBlocks == 0) {
+      if (forwardCam.ccc.numBlocks == 0 && !seen) {
         turnAround();
         Serial.println("Didn't see base, so turning until one found.");
         break;
       }
       else {
         Serial.println("Saw base");
-        analogWrite(motor, 60);
+        analogWrite(motor, 50);
       }
 
       if (seen == 0) {
@@ -197,11 +198,14 @@ void loop() {
             objX = forwardCam.ccc.blocks[i].m_x;
 
             err = objX - 158;
-            
-            if (forwardCam.ccc.blocks[i].m_width > 100){
+            if (forwardCam.ccc.blocks[i].m_width > 125){
               Serial.println("Base large in frame, moving to tag.");
+              analogWrite(motor, 0);
               currState = TAG;
               break;
+            }
+            else if (forwardCam.ccc.blocks[i].m_width > 50) {
+              analogWrite(motor, 35);
             }
             getDeriv(); // derivative (sets global variable)
             steerI += steerKI * err; // integral
@@ -210,7 +214,8 @@ void loop() {
             doSteer(steerP, steerI, steerD); // Do actual steer
             }
           else if (i = (forwardCam.ccc.numBlocks - 1)) {
-            closestBase = forwardCam.ccc.blocks[0].m_index;   
+            closestBase = forwardCam.ccc.blocks[0].m_index;
+            doSteer(0,0,0);   
           }
         }
         loops++;
