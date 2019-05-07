@@ -71,7 +71,7 @@ void doSteer(double P, double I, double D) {
 
 void turnAround(){
   steer.write(0);
-  analogWrite(motor, 60);
+  analogWrite(motor, 55);
 }
 
 void getDeriv() {
@@ -180,7 +180,7 @@ void loop() {
 
       else {
         Serial.println("Saw base");
-        analogWrite(motor, 75);
+        analogWrite(motor, 60);
         forwardCam.ccc.blocks[0];
         objX = forwardCam.ccc.blocks[0].m_x;
 
