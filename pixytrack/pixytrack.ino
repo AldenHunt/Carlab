@@ -24,6 +24,8 @@ int armPos = 135;
 int loops;
 int errorDerivative[5];
 bool sawBall;
+int closestBase;
+int loop = 0;
 
 // PID variables for steering //
 double steerP, steerI, steerD;
@@ -169,38 +171,47 @@ void loop() {
       break;
     }
     case RUN: {
-      
+
+
       forwardCam.ccc.getBlocks(30); // we want signatures 11110, just the bases
       // the array will be automatically ordered with the largest object first
+
       if (forwardCam.ccc.numBlocks == 0) {
         turnAround();
         Serial.println("Didn't see base, so turning until one found.");
         break;
       }
-
       else {
         Serial.println("Saw base");
-        analogWrite(motor, 60);
-        forwardCam.ccc.blocks[0];
-        objX = forwardCam.ccc.blocks[0].m_x;
-
-        err = objX - 158;
-
-        if (forwardCam.ccc.blocks[0].m_width > 125){
-          Serial.println("Base large in frame, moving to tag.");
-          currState = TAG;
-          break;
-        }
       }
 
-      getDeriv(); // derivative (sets global variable)
-      steerI += steerKI * err; // integral
-      steerP = steerKP * err; // proportional
+      if (loop == 0) {
+        closestBase = forwardCam.ccc.blocks[0].m_index;
+        loop = 1;
+      }
+      
+      for(int i = 0; i < forwardCam.ccc.numBlocks; i++){
+          if (forwardCam.ccc.blocks[i].m_index == index){
+            analogWrite(motor, 60);
+            objX = forwardCam.ccc.blocks[i].m_x;
 
-      doSteer(steerP, steerI, steerD); // Do actual steer
-      break;
+            err = objX - 158;
+            
+            if (forwardCam.ccc.blocks[i].m_width > 125){
+              Serial.println("Base large in frame, moving to tag.");
+              currState = TAG;
+              break;
+            }
+            getDeriv(); // derivative (sets global variable)
+            steerI += steerKI * err; // integral
+            steerP = steerKP * err; // proportional
 
+            doSteer(steerP, steerI, steerD); // Do actual steer
+            break;
+            }   
+        }
     }
+
     case TAG: {
       lowerArm();
       //turnAround();
