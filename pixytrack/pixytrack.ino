@@ -1,26 +1,29 @@
 #include <Pixy2.h>
 #include <Servo.h>
-#include "Adafruit_APDS9960.h"
+//#include "Adafruit_APDS9960.h"
 
 Pixy2 forwardCam;
 Servo mitt;
 Servo steer;
-Adafruit_APDS9960 apds;
+//Adafruit_APDS9960 apds;
 
 enum state {
   TRACK,
   FIELD,
   RUN,
-  TAG
+  TAG,
+  END
 };
 
 int photoDiode = 12;
 int motor = 3;
+//int proximity = 7;
 int objX = 168;
 int err = 0;
 int armPos = 135;
 int loops;
 int errorDerivative[5];
+bool sawBall;
 
 // PID variables for steering //
 double steerP, steerI, steerD;
@@ -33,30 +36,42 @@ void setup() {
   // Attaching motors/servos/sensors to correct pin
   pinMode(photoDiode, INPUT);
   pinMode(motor, OUTPUT);
+  //pinMode(proximity, INPUT_PULLUP);
   mitt.attach(9);
   steer.attach(10);
-  Serial.begin(9600);
-  forwardCam.init();
+  Serial.begin(115200);
   
+  /*if(!apds.begin()) {
+    Serial.println("Couldn't initialize APDS");
+  }
+  else Serial.println("APDS initialized!"); 
+  */
+  forwardCam.init();
+  sawBall = false;
   mitt.write(140);
   steer.write(90);
   loops = 0;
   currState = TRACK;
   steerKP = 0.7; steerKI = 0; steerKD = 0.05;
-  analogWrite(motor, 75);
+  analogWrite(motor, 80);
+  
+  /*apds.enableProximity(true);
+  apds.setProximityInterruptThreshold(0, 100);
+
+  //enable the proximity interrupt
+  apds.enableProximityInterrupt(); */
 }
 
 void doSteer(double P, double I, double D) {
   int toServo = (int) 90 + P + I + D;
   if (toServo < 0) toServo = 0;
   else if (toServo > 180) toServo = 180;
-  Serial.print("Steer: ");
-  Serial.println(toServo);
   steer.write(toServo);
 }
 
 void turnAround(){
-  steer.write(45);
+  steer.write(0);
+  analogWrite(motor, 60);
 }
 
 void getDeriv() {
@@ -89,33 +104,43 @@ void loop() {
   // put your main code here, to run repeatedly:
   //Blocks ball[]; // ball block
   //Blocks bases[]; // bases block
-  /*
-  // Get the error for PID (based on x-location of ball in frame)
-  ball = forwardCam.ccc.getBlocks(true, 1); // wait until it detects object with signature 1 (ball) 
-  for (int i = 0; i < (sizeof(forwardCam.ccc.blocks) / sizeof(forwardCam.ccc.blocks[0])); i++) {
-    if (forwardCam.ccc.blocks[i].m_width < 5) continue; // Avoid false positives
-    objX = forwardCam.ccc.blocks[i].m_x;
-    err = objX - 168;
-    break;
-  } */
-
   switch(currState) {
     case TRACK: {
+      
+      //Color code based off Adafruit example
+      //create some variables to store the color data in
+      /* if(!digitalRead(proximity)){
+        Serial.println(apds.readProximity());
+        currState = FIELD;
 
-      if (loops >= 150) {
+        //clear the interrupt
+        apds.clearInterrupt();
+        break;
+      } */
+      
+      if (loops >= 200) {
+        Serial.println("End of loops, going to field.");
         currState = FIELD;
         break;
       }
       // Get the error for PID (based on x-location of ball in frame)
-      forwardCam.ccc.getBlocks();
+      forwardCam.ccc.getBlocks(1);
       Serial.print("Blocks: ");
       Serial.println(forwardCam.ccc.numBlocks);
-      //forwardCam.ccc.blocks[0].print();
-      if (forwardCam.numBlocks > 0) {
+      if (forwardCam.ccc.numBlocks > 0) {
+        sawBall = true;
         objX = forwardCam.ccc.blocks[0].m_x;
       
-        err = objX - 158; /* shouldn't this be 158*/
+        err = objX - 158;
       }
+      else if (sawBall) {
+          delay(20);
+          currState = FIELD;
+          Serial.println("Ball moved out of frame, going to field.");
+          break;
+      }
+      else {err = 0;}
+      
 
       /* ! THIS SHOULD PROBABLY BE A WHILE LOOP ! */
       /*for (int i = 0; i < (sizeof(forwardCam.ccc.blocks) / sizeof(forwardCam.ccc.blocks[0])); i++) {
@@ -137,28 +162,36 @@ void loop() {
       analogWrite(motor, 0);
       liftArm();
       currState = RUN;
+      steerP, steerI, steerD = 0;
+      loops = 0;
+      delay(250);
+      Serial.println("Finished fielding, going to 'run'");
       break;
     }
     case RUN: {
-
-      forwardCam.ccc.getBlocks(14); // we want signatures 1110, just the bases
-      /* the array will be automatically ordered with the largest object first*/
+      
+      forwardCam.ccc.getBlocks(30); // we want signatures 11110, just the bases
+      // the array will be automatically ordered with the largest object first
       if (forwardCam.ccc.numBlocks == 0) {
         turnAround();
+        Serial.println("Didn't see base, so turning until one found.");
         break;
-      /* make the car rotate?*/
       }
 
-      if (forwardCam.ccc.numBlocks > 0) {
+      else {
+        Serial.println("Saw base");
+        analogWrite(motor, 75);
         forwardCam.ccc.blocks[0];
         objX = forwardCam.ccc.blocks[0].m_x;
 
         err = objX - 158;
 
-        if (forwardCam.ccc.blocks[0].width > 250){
+        if (forwardCam.ccc.blocks[0].m_width > 125){
+          Serial.println("Base large in frame, moving to tag.");
           currState = TAG;
           break;
         }
+      }
 
       getDeriv(); // derivative (sets global variable)
       steerI += steerKI * err; // integral
@@ -167,17 +200,22 @@ void loop() {
       doSteer(steerP, steerI, steerD); // Do actual steer
       break;
 
-    } 
+    }
     case TAG: {
       lowerArm();
-      turnAround();
-      currState = TRACK;
-      /* make it go back to home base? */
-      /*forwardCam.ccc.getBlocks(32);*/
+      //turnAround();
+      currState = END;
+      Serial.println("Lowered arm, now ending.");
+      //make it go back to home base?
+      //forwardCam.ccc.getBlocks(32);
       break;
     }
-
-  }
+    case END: { 
+      mitt.detach();
+      steer.detach();
+      analogWrite(motor, 0);
+    }
+    }
   // program to lift the arm using photoDiode
   // detect 
   delay(5);
