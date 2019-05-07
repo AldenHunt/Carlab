@@ -39,7 +39,9 @@ void setup() {
   pinMode(motor, OUTPUT);
   //pinMode(proximity, INPUT_PULLUP);
   mitt.attach(9);
+  mitt.write(5);
   steer.attach(10);
+  steer.write(90);
   Serial.begin(115200);
   
   /*if(!apds.begin()) {
@@ -49,8 +51,6 @@ void setup() {
   */
   forwardCam.init();
   sawBall = false;
-  mitt.write(5);
-  steer.write(90);
   loops = 0;
   seen = 0;
   currState = TRACK;
@@ -91,7 +91,7 @@ void getDeriv() {
 }
 
 void liftArm() {
-  mitt.write(45);
+  mitt.write(50);
   Serial.println("Lifted");
   return;
 }
@@ -120,28 +120,31 @@ void loop() {
         break;
       } */
       
-      if (loops >= 500) {
-        Serial.println("End of loops, going to field.");
-        currState = FIELD;
-        break;
-      }
       // Get the error for PID (based on x-location of ball in frame)
       forwardCam.ccc.getBlocks(1);
       Serial.print("Blocks: ");
       Serial.println(forwardCam.ccc.numBlocks);
       if (forwardCam.ccc.numBlocks > 0) {
-        sawBall = true;
+        //sawBall = true;
         objX = forwardCam.ccc.blocks[0].m_x;
-      
-        err = objX - 158;
+        if(forwardCam.ccc.blocks[0].m_y > 190){
+          steer.write(90);
+          delay(500);
+          currState = FIELD;
+          Serial.println("Ball moved out of frame, going to field.");
+          break;
+        }
+        else err = objX - 158;
       }
-      else if (sawBall) {
-          delay(200);
+      /*else if (sawBall) {
+          steer.write(90);
+          delay(400);
           currState = FIELD;
           Serial.println("Ball moved out of frame, going to field.");
           break;
       }
-      else {err = 0;}
+      */
+      else err = 0;
       
 
       /* ! THIS SHOULD PROBABLY BE A WHILE LOOP ! */
