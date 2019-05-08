@@ -111,8 +111,7 @@ void loop() {
     delay(333);
   } */
   // put your main code here, to run repeatedly:
-  //Blocks ball[]; // ball block
-  //Blocks bases[]; // bases block
+
   switch(currState) {
     case TRACK: {
       
@@ -128,30 +127,20 @@ void loop() {
       }
       
       // Get the error for PID (based on x-location of ball in frame)
-      forwardCam.ccc.getBlocks(1);
+      forwardCam.ccc.getBlocks(false, 1);
       Serial.print("Blocks: ");
       Serial.println(forwardCam.ccc.numBlocks);
       if (forwardCam.ccc.numBlocks > 0) {
-        //sawBall = true;
-        objX = forwardCam.ccc.blocks[0].m_x;
-        /*if(forwardCam.ccc.blocks[0].m_y > 190){
-          steer.write(90);
-          delay(500);
-          currState = FIELD;
-          Serial.println("Ball moved out of frame, going to field.");
-          break;
+        for (int i = 0; i < forwardCam.ccc.numBlocks; i++) {
+         if (forwardCam.ccc.blocks[i].m_signature == 1) {
+            sawBall = true;
+            objX = forwardCam.ccc.blocks[0].m_x;
+            err = objX - 158;
+            break;
+         }   
         }
-        else */ err = objX - 158;
       }
-      /*else if (sawBall) {
-          steer.write(90);
-          delay(400);
-          currState = FIELD;
-          Serial.println("Ball moved out of frame, going to field.");
-          break;
-      }
-      */
-      else err = 0;
+      else if (!sawBall) err = 0;
     
       // Calculations for PID components
       getDeriv(); // derivative (sets global variable)
