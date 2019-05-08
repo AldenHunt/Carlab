@@ -92,13 +92,13 @@ void getDeriv() {
 }
 
 void liftArm() {
-  mitt.write(55);
+  mitt.write(95);
   Serial.println("Lifted");
   return;
 }
 
 void lowerArm() {
-  mitt.write(5);
+  mitt.write(20);
   Serial.println("Lowered");
   return;
 }
@@ -193,7 +193,7 @@ void loop() {
             objX = forwardCam.ccc.blocks[i].m_x;
 
             err = objX - 158;
-            if (forwardCam.ccc.blocks[i].m_height > 75){
+            if (forwardCam.ccc.blocks[i].m_height > 60){
               Serial.println("Base large in frame, moving to tag.");
               analogWrite(motor, 0);
               currState = TAG;
