@@ -1,11 +1,11 @@
 #include <Pixy2.h>
 #include <Servo.h>
-//#include "Adafruit_APDS9960.h"
+#include "Adafruit_APDS9960.h"
 
 Pixy2 forwardCam;
 Servo mitt;
 Servo steer;
-//Adafruit_APDS9960 apds;
+Adafruit_APDS9960 apds;
 
 enum state {
   TRACK,
@@ -17,7 +17,7 @@ enum state {
 
 int photoDiode = 12;
 int motor = 3;
-//int proximity = 7;
+int proximity = 7;
 int objX = 158;
 int err = 0;
 int loops;
@@ -37,31 +37,30 @@ void setup() {
   // Attaching motors/servos/sensors to correct pin
   pinMode(photoDiode, INPUT);
   pinMode(motor, OUTPUT);
-  //pinMode(proximity, INPUT_PULLUP);
+  pinMode(proximity, INPUT_PULLUP);
   mitt.attach(9);
   mitt.write(5);
   steer.attach(10);
   steer.write(90);
   Serial.begin(115200);
   
-  /*if(!apds.begin()) {
+  if(!apds.begin()) {
     Serial.println("Couldn't initialize APDS");
   }
   else Serial.println("APDS initialized!"); 
-  */
   forwardCam.init();
   sawBall = false;
   loops = 0;
   seen = 0;
   currState = TRACK;
-  steerKP = 0.7; steerKI = 0; steerKD = 0;
+  steerKP = 0.8; steerKI = 0; steerKD = 0;
   analogWrite(motor, 80);
   
-  /*apds.enableProximity(true);
-  apds.setProximityInterruptThreshold(0, 100);
+  apds.enableProximity(true);
+  apds.setProximityInterruptThreshold(0, 3);
 
   //enable the proximity interrupt
-  apds.enableProximityInterrupt(); */
+  apds.enableProximityInterrupt();
 }
 
 void doSteer(double P, double I, double D) {
@@ -72,9 +71,9 @@ void doSteer(double P, double I, double D) {
 }
 
 void turnAround(){
-  steer.write(65);
+  steer.write(60);
 
-  analogWrite(motor, 30);
+  analogWrite(motor, 31);
 }
 
 void getDeriv() {
@@ -92,7 +91,7 @@ void getDeriv() {
 }
 
 void liftArm() {
-  mitt.write(50);
+  mitt.write(55);
   Serial.println("Lifted");
   return;
 }
@@ -104,6 +103,13 @@ void lowerArm() {
 }
 
 void loop() {
+
+
+  /*while (true) {
+    Serial.print("PRoximity");
+    Serial.println(apds.readProximity());
+    delay(333);
+  } */
   // put your main code here, to run repeatedly:
   //Blocks ball[]; // ball block
   //Blocks bases[]; // bases block
@@ -112,14 +118,14 @@ void loop() {
       
       //Color code based off Adafruit example
       //create some variables to store the color data in
-      /* if(!digitalRead(proximity)){
+      if(!digitalRead(proximity)){
         Serial.println(apds.readProximity());
         currState = FIELD;
 
         //clear the interrupt
         apds.clearInterrupt();
         break;
-      } */
+      }
       
       // Get the error for PID (based on x-location of ball in frame)
       forwardCam.ccc.getBlocks(1);
@@ -128,14 +134,14 @@ void loop() {
       if (forwardCam.ccc.numBlocks > 0) {
         //sawBall = true;
         objX = forwardCam.ccc.blocks[0].m_x;
-        if(forwardCam.ccc.blocks[0].m_y > 190){
+        /*if(forwardCam.ccc.blocks[0].m_y > 190){
           steer.write(90);
           delay(500);
           currState = FIELD;
           Serial.println("Ball moved out of frame, going to field.");
           break;
         }
-        else err = objX - 158;
+        else */ err = objX - 158;
       }
       /*else if (sawBall) {
           steer.write(90);
@@ -146,14 +152,6 @@ void loop() {
       }
       */
       else err = 0;
-      
-
-      /* ! THIS SHOULD PROBABLY BE A WHILE LOOP ! */
-      /*for (int i = 0; i < (sizeof(forwardCam.ccc.blocks) / sizeof(forwardCam.ccc.blocks[0])); i++) {
-        if (forwardCam.ccc.blocks[i].m_width < 5) continue; // Avoid false positives
-        objX = forwardCam.ccc.blocks[i].m_x;
-        err = objX - 168;
-      } */
     
       // Calculations for PID components
       getDeriv(); // derivative (sets global variable)
@@ -178,7 +176,7 @@ void loop() {
         Serial.print("Err: ");
         Serial.println(err);
 
-      forwardCam.ccc.getBlocks(false, 15); // we want signatures 11110, just the bases
+      forwardCam.ccc.getBlocks(false, 14); // we want signatures 11110, just the bases
       // the array will be automatically ordered with the largest object first
 
       if (forwardCam.ccc.numBlocks == 0 && !seen) {
@@ -231,7 +229,6 @@ void loop() {
 
     case TAG: {
       lowerArm();
-      //turnAround();
       currState = END;
       Serial.println("Lowered arm, now ending.");
       //make it go back to home base?
