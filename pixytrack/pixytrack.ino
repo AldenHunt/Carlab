@@ -72,7 +72,8 @@ void doSteer(double P, double I, double D) {
 }
 
 void turnAround(){
-  steer.write(5);
+  steer.write(65);
+
   analogWrite(motor, 30);
 }
 
@@ -177,7 +178,7 @@ void loop() {
         Serial.print("Err: ");
         Serial.println(err);
 
-      forwardCam.ccc.getBlocks(30); // we want signatures 11110, just the bases
+      forwardCam.ccc.getBlocks(false, 15); // we want signatures 11110, just the bases
       // the array will be automatically ordered with the largest object first
 
       if (forwardCam.ccc.numBlocks == 0 && !seen) {
@@ -192,6 +193,7 @@ void loop() {
 
       if (seen == 0) {
         closestBase = forwardCam.ccc.blocks[0].m_index;
+        liftArm();
         seen = 1;
       }
       
@@ -201,7 +203,7 @@ void loop() {
             objX = forwardCam.ccc.blocks[i].m_x;
 
             err = objX - 158;
-            if (forwardCam.ccc.blocks[i].m_width > 125){
+            if (forwardCam.ccc.blocks[i].m_width > 75){
               Serial.println("Base large in frame, moving to tag.");
               analogWrite(motor, 0);
               currState = TAG;
@@ -215,10 +217,12 @@ void loop() {
             steerP = steerKP * err; // proportional
 
             doSteer(steerP, steerI, steerD); // Do actual steer
+            
             }
-          else if (i = (forwardCam.ccc.numBlocks - 1)) {
+            
+          else if (i == (forwardCam.ccc.numBlocks - 1)) {
             closestBase = forwardCam.ccc.blocks[0].m_index;
-            doSteer(0,0,0);   
+            /*doSteer(0,0,0); */ 
           }
         }
         loops++;
