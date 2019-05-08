@@ -24,7 +24,7 @@ int loops;
 int errorDerivative[5];
 bool sawBall;
 int closestBase;
-int seen;
+bool seen;
 
 // PID variables for steering //
 double steerP, steerI, steerD;
@@ -48,13 +48,14 @@ void setup() {
     Serial.println("Couldn't initialize APDS");
   }
   else Serial.println("APDS initialized!"); 
+  
   forwardCam.init();
   sawBall = false;
   loops = 0;
-  seen = 0;
+  seen = false;
   currState = TRACK;
   steerKP = 0.8; steerKI = 0; steerKD = 0;
-  analogWrite(motor, 80);
+  analogWrite(motor, 75);
   
   apds.enableProximity(true);
   apds.setProximityInterruptThreshold(0, 3);
@@ -72,8 +73,8 @@ void doSteer(double P, double I, double D) {
 
 void turnAround(){
   steer.write(60);
-
   analogWrite(motor, 31);
+  
 }
 
 void getDeriv() {
@@ -104,12 +105,6 @@ void lowerArm() {
 
 void loop() {
 
-
-  /*while (true) {
-    Serial.print("PRoximity");
-    Serial.println(apds.readProximity());
-    delay(333);
-  } */
   // put your main code here, to run repeatedly:
 
   switch(currState) {
@@ -127,7 +122,7 @@ void loop() {
       }
       
       // Get the error for PID (based on x-location of ball in frame)
-      forwardCam.ccc.getBlocks(false, 1);
+      forwardCam.ccc.getBlocks(true, 1, 10);
       Serial.print("Blocks: ");
       Serial.println(forwardCam.ccc.numBlocks);
       if (forwardCam.ccc.numBlocks > 0) {
@@ -137,7 +132,8 @@ void loop() {
             objX = forwardCam.ccc.blocks[0].m_x;
             err = objX - 158;
             break;
-         }   
+         }
+         else Serial.println("Saw unexpected block");   
         }
       }
       else if (!sawBall) err = 0;
@@ -151,16 +147,18 @@ void loop() {
       doSteer(steerP, steerI, steerD); // Do actual steer
       break;
     }
+    
     case FIELD: {
       analogWrite(motor, 0);
       liftArm();
       currState = RUN;
       steerP, steerI, steerD = 0;
       loops = 0;
-      delay(2000);
+      delay(1000);
       Serial.println("Finished fielding, going to 'run'");
       break;
     }
+    
     case RUN: {
         Serial.print("Err: ");
         Serial.println(err);
@@ -177,11 +175,16 @@ void loop() {
         Serial.println("Saw base");
         analogWrite(motor, 50);
       }
-
-      if (seen == 0) {
-        closestBase = forwardCam.ccc.blocks[0].m_index;
-        liftArm();
-        seen = 1;
+      if (!seen) {
+        if (forwardCam.ccc.blocks[0].m_height < 6) {
+          turnAround();
+          Serial.println("Seen block is a false positive, so still turning");
+          break;
+        }
+        else {
+          closestBase = forwardCam.ccc.blocks[0].m_index;
+          seen = true;
+        }      
       }
       
       for(int i = 0; i < forwardCam.ccc.numBlocks; i++){
@@ -190,13 +193,13 @@ void loop() {
             objX = forwardCam.ccc.blocks[i].m_x;
 
             err = objX - 158;
-            if (forwardCam.ccc.blocks[i].m_width > 75){
+            if (forwardCam.ccc.blocks[i].m_height > 75){
               Serial.println("Base large in frame, moving to tag.");
               analogWrite(motor, 0);
               currState = TAG;
               break;
             }
-            else if (forwardCam.ccc.blocks[i].m_width > 50) {
+            else if (forwardCam.ccc.blocks[i].m_height > 35) {
               analogWrite(motor, 35);
             }
             getDeriv(); // derivative (sets global variable)
@@ -218,6 +221,7 @@ void loop() {
 
     case TAG: {
       lowerArm();
+      delay(500);
       currState = END;
       Serial.println("Lowered arm, now ending.");
       //make it go back to home base?
