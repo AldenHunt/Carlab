@@ -25,6 +25,8 @@ int errorDerivative[5];
 bool sawBall;
 int closestBase;
 bool seen;
+bool lrWaddle;
+
 
 // PID variables for steering //
 double steerP, steerI, steerD;
@@ -53,8 +55,9 @@ void setup() {
   sawBall = false;
   loops = 0;
   seen = false;
+  lrWaddle = false;
   currState = TRACK;
-  steerKP = 0.8; steerKI = 0; steerKD = 0;
+  steerKP = 0.8; steerKI = 0; steerKD = 0.00;
   analogWrite(motor, 75);
   
   apds.enableProximity(true);
@@ -71,12 +74,18 @@ void doSteer(double P, double I, double D) {
   steer.write(toServo);
 }
 
-void turnAround(){
-  steer.write(60);
-  analogWrite(motor, 31);
-  
+void turnAround() {
+  if (loops % 10 == 0) lrWaddle = !lrWaddle;
+  if (lrWaddle) {
+    steer.write(60);
+    analogWrite(motor, 35);
+  }
+  else {
+    steer.write(120);
+    analogWrite(motor, 35);
+  }
+  delay(20);
 }
-
 void getDeriv() {
   int i = loops % 5;
   errorDerivative[i] = err;
@@ -127,16 +136,17 @@ void loop() {
       Serial.println(forwardCam.ccc.numBlocks);
       if (forwardCam.ccc.numBlocks > 0) {
         for (int i = 0; i < forwardCam.ccc.numBlocks; i++) {
-         if (forwardCam.ccc.blocks[i].m_signature == 1) {
+          //Redundant, the else should never happen
+          if (forwardCam.ccc.blocks[i].m_signature == 1) {
             sawBall = true;
             objX = forwardCam.ccc.blocks[0].m_x;
             err = objX - 158;
             break;
-         }
-         else Serial.println("Saw unexpected block");   
+          }
+          else Serial.println("Saw unexpected block");  
         }
       }
-      else if (!sawBall) err = 0;
+      else err = 0;
     
       // Calculations for PID components
       getDeriv(); // derivative (sets global variable)
@@ -176,11 +186,12 @@ void loop() {
         analogWrite(motor, 50);
       }
       if (!seen) {
-        if (forwardCam.ccc.blocks[0].m_height < 6) {
+        if (forwardCam.ccc.blocks[0].m_height < 6) {   
           turnAround();
           Serial.println("Seen block is a false positive, so still turning");
           break;
         }
+        else if (forwardCam.ccc.blocks[0].m_y < 100) break;
         else {
           closestBase = forwardCam.ccc.blocks[0].m_index;
           seen = true;
@@ -193,7 +204,7 @@ void loop() {
             objX = forwardCam.ccc.blocks[i].m_x;
 
             err = objX - 158;
-            if (forwardCam.ccc.blocks[i].m_height > 60){
+            if (forwardCam.ccc.blocks[i].m_height > 70){
               Serial.println("Base large in frame, moving to tag.");
               analogWrite(motor, 0);
               currState = TAG;
@@ -211,8 +222,7 @@ void loop() {
             }
             
           else if (i == (forwardCam.ccc.numBlocks - 1)) {
-            closestBase = forwardCam.ccc.blocks[0].m_index;
-            /*doSteer(0,0,0); */ 
+            closestBase = forwardCam.ccc.blocks[0].m_index; 
           }
         }
         loops++;
